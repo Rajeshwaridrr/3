@@ -1,0 +1,265 @@
+1.Installing Maven And gradle:
+
+ sudo apt update
+ sudo apt install openjdk-11-jdk
+ java-version
+ sudo apt install maven
+ mvn-version
+
+Option 1: Install from Ubuntu Repositories
+ sudo apt install gradle
+ gradle-v
+ 
+Option 2: Install the Latest Version Manually
+ https://gradle.org/install/
+ sudo unzip-d /opt/gradle gradle-8.13-bin.zip
+ 3.to your ~/.bashrc (or ~/.profile):
+ echo "export PATH=\$PATH:/opt/gradle/gradle-8.13/bin"
+ gradle-v
+
+2.Creating and Understanding of POM FILE
+
+1. mvn archetype:generate -DgroupId=com.example -DartifactId=MyMavenApp -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+
+ 2. cd MyMavenApp
+ 3. mvn compile
+ 4. mvn test
+ 5. mvn package
+ 6. mvn clean
+
+3. Working with Gradle
+
+1. gradle -v
+2. mkdir HelloGradle
+3. cd HelloGradle
+4. gradle init --type java-application
+5. cd app
+6. nano build.gradle 
+paste the below code:
+task hello {
+    doLast {
+        println 'Hello, Gradle!'
+    }
+}
+ctrls,ctrlx
+7. gradle Hello
+8. gradle build
+9. gradle run
+
+4.Build and Run JAVA Application
+
+1. mvn archetype:generate -DgroupId=com.example -DartifactId=HelloMaven -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+2. cd HelloMaven
+3. mvn package
+4. java -cp target/HelloMaven-1.0-SNAPSHOT.jar com.example.App
+5. cd
+6. mkdir HelloMavenGradle
+7. cd HelloMavenGradle
+8. gradle init --type java-application
+9. cd
+10. cd HelloMavenGradle
+11. cd app
+12. nano build.gradle.kts
+13. ctrlx
+14. gradle build
+15. gradle run
+
+5. Introduction to Jenkins
+
+1. sudo dnf install java-17-openjdk 
+2. java -version 
+3. sudo wget -O /etc/yum.repos.d/jenkins.repo \
+    https://pkg.jenkins.io/redhat-stable/jenkins.repo
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+sudo dnf upgrade
+# Add required dependencies for the jenkins package
+sudo dnf install fontconfig java-17-openjdk
+sudo dnf install jenkins
+sudo systemctl daemon-reload
+
+4. sudo dnf install Jenkins
+5. sudo systemctl daemon-reload
+6. sudo systemctl start jenkins 
+   sudo systemctl enable jenkins 
+   sudo systemctl status Jenkins
+7. sudo cat /var/lib/jenkins/secrets/initialAdminPasswords
+
+
+6. Continuous intergration with Jenkins
+
+1. open Jenkins dashboard
+2. click new item
+3. give name as MAVEN_CI
+4. select freestyle project click next
+5.select git and paste the below url:
+https://github.com/vigneshbhatn/MavenBuild/
+6.add build step :
+select execute shell
+then add :
+mvn test
+mvn clean
+7.click save
+8. after saving click build now
+ 
+
+
+
+
+7. Basics of Ansible
+
+1. sudo dnf update-y
+2. sudo dnf install ansible
+3. ansible --version
+4. copy path from config file
+5. cd /etc/ansible/
+6. sudo nano hosts.ini
+7. paste it in hosts.ini:
+[local]
+localhost ansible_connection=local
+ctrls+ctrlx
+8.sudo nano playbook.yml
+9.paste the following code:
+  ---
+- name: Basic Server Setup
+  hosts: local
+  become: yes  # Use privilege escalation (sudo)
+  tasks:
+    - name: Update dnf cache
+      dnf:
+	update_cache: yes
+
+    - name: Install curl
+      dnf:
+	name: curl
+        state: present
+ctrls+ctrlx
+10.ansible-playbook -i hosts.ini playbook.yml
+
+8. Setting up Jenkins ci pipeline
+
+1. sudo apt update
+2. sudo apt install jenkins
+3. sudo systemctl start jenkins
+4. sudo systemctl enable Jenkins
+5. click new item name it as MAVEN_CI Pipeline select pipeline down and click next after it opens a page scrool down until uh see pipepline scipt section paste the below code in it:
+pipeline {
+    agent any
+
+    tools {
+        maven 'MAVEN_HOME'
+    }
+
+    environment {
+        // GitHub Maven archetype repository URL
+        SOURCE_URL = 'https://github.com/apache/maven-archetypes/archive/refs/heads/master.zip'
+        SOURCE_DIR = 'maven-archetypes-master'  // Directory where the source code will be extracted
+        JAR_FILE = 'target/myapp.jar'  // The path to the generated JAR file
+        ANSIBLE_INVENTORY = 'inventory'  // Path to Ansible inventory file
+        ANSIBLE_PLAYBOOK = 'deploy.yml'  // Path to Ansible playbook
+    }
+
+    stages {
+        stage('Download Source Code') {
+            steps {
+                script {
+                    // Download the source code from GitHub (ZIP format)
+                    echo 'Downloading source code from GitHub...'
+                    sh "wget ${SOURCE_URL} -O /tmp/source.zip"
+                    
+                    // Extract the downloaded source code
+                    echo 'Extracting source code...'
+                    sh 'unzip /tmp/source.zip -d /tmp'
+                    
+                    // Rename extracted directory to the expected name
+                    sh "mv /tmp/maven-archetypes-master ${SOURCE_DIR}"
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir(SOURCE_DIR) {
+                    // Build the Maven project
+                    echo 'Building Maven project...'
+                    sh 'mvn clean package'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir(SOURCE_DIR) {
+                    // Run Maven tests
+                    echo 'Running Maven tests...'
+                    sh 'mvn test'
+                }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                dir(SOURCE_DIR) {
+                    // Archive the build artifacts (JAR files)
+                    echo 'Archiving build artifacts...'
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    // Run Ansible playbook for deployment
+                    echo 'Deploying application using Ansible...'
+                    
+                    // Define the copy and restart tasks for Ansible
+                    def deployTasks = '''
+                    - name: Deploy Maven Application
+                      hosts: web
+                      tasks:
+                        - name: Copy JAR file to remote server
+                          copy:
+                            src: ${WORKSPACE}/${SOURCE_DIR}/${JAR_FILE}
+                            dest: /opt/myapp.jar
+                            mode: '0755'
+
+                        - name: Restart Application Service
+                          shell: |
+                            pkill -f myapp.jar || true
+                            nohup java -jar /opt/myapp.jar > /dev/null 2>&1 &
+                    '''
+                    
+                    // Write the tasks to a temporary file for Ansible execution
+                    writeFile file: '/tmp/deploy.yml', text: deployTasks
+                    
+                    // Run the Ansible playbook
+                    sh "ansible-playbook -i ${ANSIBLE_INVENTORY} /tmp/deploy.yml"
+                }
+            }
+        }
+    }
+}
+then click save it do not click build now.
+
+6.create a inventory file in ansible config file: nano inventory
+[web]
+192.168.150.128 ansible_user=fedora ansible_ssh_private_key_file=/home/snehit/.ssh/id_rsa
+7.create a deploy.yml file:
+- name: Deploy Maven Application
+  hosts: web
+  tasks:
+    - name: Copy JAR file to remote server
+      copy:
+	src: /var/lib/jenkins/workspace/Maven-CI-Pipeline/target/myapp.jar
+        dest: /opt/myapp.jar
+        mode: '0755'
+
+    - name: Restart Application Service
+      shell: |
+	pkill -f myapp.jar || true
+        nohup java -jar /opt/myapp.jar > /dev/null 2>&1 &
+8. now save file and go to Jenkins and click build now to get output
+ 
+
+
+
