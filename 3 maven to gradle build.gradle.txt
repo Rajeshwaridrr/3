@@ -16,7 +16,7 @@ application {
     mainClass = 'com.example.App'
 }
 
-Ancible:
+6 Ancible:
 [local]
 127.0.0.1 ansible_connection=local
 
