@@ -16,4 +16,22 @@ application {
     mainClass = 'com.example.App'
 }
 
+Ancible:
+[local]
+127.0.0.1 ansible_connection=local
+
+---
+- name: Basic Server Setup
+  hosts: local
+  become: yes
+  tasks:
+    - name: Update system cache
+      dnf:
+        update_cache: yes
+     
+
+    - name: Install curl
+      dnf:
+        name: curl
+        state: present
 
